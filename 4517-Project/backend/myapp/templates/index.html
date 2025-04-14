@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Image Filtering</title>
+
+
+    <style>
+        body {
+            text-align: center;
+        }
+
+        #img {
+            max-width: 400px;
+            display: none;
+        }
+
+        #img_fliter {
+            max-width: 400px;
+            display: none;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <h1>
+        Welcome to Image Flitering Website
+    </h1>
+    <h2>Upload Image</h2>
+    <form id="uploadForm" method="POST" enctype="multipart/form-data">
+        <input type="file" name="myFile" id="fileInput">
+        <button type="submit" id="uploadButton">Upload</button>
+        <p id="fileName">No file chosen</p>
+    </form>
+
+    <div class="image-container">
+        <img id="img" data-filename="" alt="Filtered Image" >
+    </div>
+
+    <h2>Pick Filter to Apply</h2>
+    <select id="dropdown" name="Filter">
+        <option value="">-- Select Filter --</option>
+        <option value="gray">Gray</option>
+        <option value="blur">Blur</option>
+        <option value="sepia">Sepia</option>
+    </select>
+
+    <div class="image-container">
+        <img id="img_fliter" alt="Filtered Image">
+    </div>
+
+    <br><br>
+
+    <button type="submit" id="downloadButton">Download Image</button>
+
+    <br><br>
+</body>
+
+</html>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadForm = document.getElementById('uploadForm');
+    const downloadButton = document.getElementById('downloadButton');
+    const fileName = document.getElementById('fileName');
+    const dropdown = document.getElementById('dropdown');
+    const img = document.getElementById('img');
+    const img_fliter = document.getElementById('img_fliter');
+
+    uploadButton.addEventListener('click', async (e) => {
+        e.preventDefault();  // Stop normal form submission
+
+        const formData = new FormData(uploadForm); // Grab form data including files
+
+        const response = await fetch('/upload/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+
+            }
+        });
+
+        if (response.ok) {
+            alert("Upload successful!");
+        } else {
+            alert("Upload failed.");
+        }
+    });
+
+    let originalFileName  =""
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (file) {
+            originalFileName = file.name;  // Save the file name
+            fileName.textContent = file.name;
+
+            // Show image img
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                img.src = e.target.result;
+                img.style.display = 'block';
+
+
+                img_fliter.src = e.target.result;
+                img_fliter.style.display = 'block';
+                img_fliter.style.filter = ''; // Reset filters
+            };
+            reader.readAsDataURL(file);
+        } else {
+            fileName.textContent = "No file chosen";
+            img.style.display = 'none';
+            img_fliter.style.display = 'none';
+        }
+    });
+
+    let filteredImgURL = ''; // Store the image with the applied filter
+
+    dropdown.addEventListener('change', () => {
+        const selectedValue = dropdown.value;
+
+        if (selectedValue === 'gray') {
+            // Apply grayscale filter
+            console.log('Applying grayscale filter');
+            img_fliter.style.filter = 'grayscale(100%)';
+        } else if (selectedValue === 'blur') {
+            // Apply blur filter
+            console.log('Applying blur filter');
+            img_fliter.style.filter = 'blur(5px)';
+
+        } else if (selectedValue === 'sepia') {
+            // Apply edge detection (simulated or use canvas/filter lib)
+            console.log('Applying sepia detection (simulate)');
+            img_fliter.style.filter = 'sepia(100%)';
+        }
+        else {
+            // Reset filter if no option is selected
+            img_fliter.style.filter = '';
+        }
+
+        // After applying the filter, save the image with the filter
+        applyFilterAndDownload(img_fliter, selectedValue);
+    });
+
+    function applyFilterAndDownload(img_fliter, filterType) {
+        // Create a canvas element to draw the image with the filter applied
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Ensure the canvas matches the image dimensions
+        canvas.width = img_fliter.naturalWidth;
+        canvas.height = img_fliter.naturalHeight;
+
+        // Draw the image onto the canvas
+        ctx.drawImage(img_fliter, 0, 0);
+
+        // Apply the filter to the canvas context (not the CSS of img_fliter)
+        if (filterType === 'gray') {
+            ctx.filter = 'grayscale(100%)';
+        } else if (filterType === 'blur') {
+            ctx.filter = 'blur(5px)';
+        } else if (filterType === 'sepia') {
+            ctx.filter = 'sepia(100%)';
+        }
+
+        // Redraw the image with the applied filter
+        ctx.drawImage(img_fliter, 0, 0);
+
+        // Convert the canvas to an image URL
+        filteredImgURL = canvas.toDataURL('image/jpeg');
+
+    }
+
+    
+    
+    downloadButton.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!filteredImgURL) {
+            alert("Please select a filter first.");
+            return;
+        }
+
+        // Create a download link and trigger the download
+        const link = document.createElement('a');
+        link.href = filteredImgURL;
+        link.download = 'filtered-image.jpg';
+        link.click();
+
+        const blob = dataURItoBlob(filteredImgURL);
+
+        // Assume `filteredImgBlob` is the Blob containing the filtered image data
+        const formData = new FormData();
+
+       
+        formData.append('filtered_image', blob, 'filtered_image.jpg');
+
+        const response = await fetch('/update_filtered_image/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+
+            }
+        });
+
+        if (response.ok) {
+            alert("Download successful!");
+        } else {
+            alert("Download failed.");
+        }
+
+
+    });
+
+
+    // Function to convert data URL to Blob
+    function dataURItoBlob(dataURI) {
+        const byteString = atob(dataURI.split(',')[1]);  // Decode the base64 string
+        const arrayBuffer = new ArrayBuffer(byteString.length);  // Create a buffer
+        const uintArray = new Uint8Array(arrayBuffer); // Create a Uint8Array to hold the bytes
+        for (let i = 0; i < byteString.length; i++) {
+            uintArray[i] = byteString.charCodeAt(i);  // Convert each character to byte
+        }
+        return new Blob([uintArray], { type: 'image/jpeg' });  // Return the Blob
+    }
+</script>
